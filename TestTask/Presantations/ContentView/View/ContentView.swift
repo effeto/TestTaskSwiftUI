@@ -6,14 +6,12 @@
 //
 
 import SwiftUI
+import ActivityIndicatorView
 
 struct ContentView: View {
     
     @EnvironmentObject var viewModel: ContentViewViewModel
-    @State var vendors: SimpleModel?
-    @State var data: SimpleModel?
     @State private var searchText = ""
-    
     var body: some View {
         VStack {
             searchBar
@@ -22,57 +20,58 @@ struct ContentView: View {
                 .onChange(of: searchText) { newValue in
                     if newValue.count >= 3 {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            if let data = vendors?.vendors {
+                            self.viewModel.searching = true
+                            if let data = self.viewModel.vendors?.vendors {
                                 let forAppend = data.filter ({($0.companyName ?? "").contains(searchText)})
-                                self.data?.vendors?.removeAll(keepingCapacity: false)
-                                self.data?.vendors?.append(contentsOf: forAppend)
-                                if self.data?.vendors?.isEmpty == true {
-                                    self.data = nil
+                                self.viewModel.data?.vendors?.removeAll(keepingCapacity: false)
+                                self.viewModel.data?.vendors?.append(contentsOf: forAppend)
+                                if self.viewModel.data?.vendors?.isEmpty == true {
+                                    self.viewModel.data = nil
                                 }
                             }
                         }
                     } else {
-                        self.data = vendors
+                        self.viewModel.searching = false
+                        self.viewModel.data = self.viewModel.vendors
                     }
                 }
-            if let data = self.data?.vendors {
-                List() {
-                    ForEach(data) { row in
-                        VStack {
-                            CellImageHeader(url: row.coverPhoto?.mediaURL ?? "", city: row.areaServed ?? "", favorited: row.favorited ?? false)
-                            VStack(alignment: .leading) {
-                                if let categories = row.categories {
-                                    CellCompanyNameAndCategory(companyName: row.companyName ?? "", categories: categories)
-                                }
-                                HStack {
-                                    ForEach(row.tags!) { tag in
-                                        CellTagsView(name: tag.name ?? "")
+                if let data = self.viewModel.data?.vendors {
+                    List(0..<data.count, id: \.self) { index in
+                            VStack {
+                                CellImageHeader(url: data[index].coverPhoto?.mediaURL ?? "", city: data[index].areaServed ?? "", favorited: data[index].favorited ?? false)
+                                VStack(alignment: .leading) {
+                                    if let categories = data[index].categories {
+                                        CellCompanyNameAndCategory(companyName: data[index].companyName ?? "", categories: categories)
+                                    }
+                                    HStack {
+                                        ForEach(data[index].tags!) { tag in
+                                            CellTagsView(name: tag.name ?? "")
+                                        }
                                     }
                                 }
                             }
-                        }
-                        .listRowSeparator(.hidden)
+                            .onAppear(perform: {
+                                if self.viewModel.searching != true {
+                                    if self.viewModel.shouldLoadData(id: index) {
+                                        self.viewModel.fetchNewData { }
+                                    }
+                                }
+                            })
+                            .listRowSeparator(.hidden)
                     }
+                    .frame( maxWidth: .infinity)
+                    .background(content: {
+                        Color(hex: "FCFCFC").edgesIgnoringSafeArea(.all)
+                    })
+                    .listStyle(PlainListStyle())
+                } else {
+                    Spacer()
+                    NoResultsView()
+                    Spacer()
                 }
-                .frame( maxWidth: .infinity)
-                .background(content: {
-                    Color(hex: "FCFCFC").edgesIgnoringSafeArea(.all)
-                })
-                .listStyle(PlainListStyle())
-            } else {
-                Spacer()
-                NoResultsView()
-                Spacer()
-            }
         }
         .onAppear(perform: {
-            self.viewModel.fetchData { model in
-                self.vendors = model
-                self.data = model
-            } failure: { error in
-                print(error)
-            }
-            
+            self.viewModel.fetchData()
         })
         .background(content: {
             Color(hex: "FCFCFC").edgesIgnoringSafeArea(.all)
@@ -96,6 +95,7 @@ struct ContentView: View {
         .shadow(color: .black.opacity(0.1), radius: 0.5, x: 1, y: 2)
     }
 }
+
 
 
 struct ContentView_Previews: PreviewProvider {

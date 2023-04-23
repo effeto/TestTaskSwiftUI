@@ -31,6 +31,7 @@ struct CellCompanyNameAndCategory: View {
                             .foregroundColor(Color.customColor(.greyPrimary))
                     }
                 }
+                
             }
         }
     }
