@@ -23,7 +23,7 @@ struct ContentView: View {
                     if newValue.count >= 3 {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             if let data = vendors?.vendors {
-                                let forAppend = data.filter ({$0.companyName!.contains(searchText)})
+                                let forAppend = data.filter ({($0.companyName ?? "").contains(searchText)})
                                 self.data?.vendors?.removeAll(keepingCapacity: false)
                                 self.data?.vendors?.append(contentsOf: forAppend)
                                 if self.data?.vendors?.isEmpty == true {
